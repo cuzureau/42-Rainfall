@@ -77,6 +77,6 @@ Segmentation fault (core dumped)
 ```
 
 Il ne reste plus qu'à :
-- et passer au level1 (`su level1`) en renseignant le password obtenu plus haut.
+- et passer au level2 (`su level2`) en renseignant le password obtenu plus haut.
 
 
