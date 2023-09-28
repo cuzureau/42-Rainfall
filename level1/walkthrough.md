@@ -41,26 +41,12 @@ Ce qui est une technique courante pour lancer un shell interactif.
   (gdb) x/s 0x8048584
   0x8048584:	 "/bin/sh"
   ```
-- Il faudrait une commande `call` dans la fonction `main()` pour que l'on puisse facilement l'overflow avec 
-l'adresse de `run()` mais il n'y en a pas. Par contre en fin de fonction il y a toujours la commande `ret` : 
-elle retourne a l'adresse precise ou le programme se trouvait avant d'executer la fonction en question 
-(c'est l'`ebp` precedent ("old ebp") qui est push sur la stack a la toute premiere instruction de chaque fonction) : 
-  ```shell
-  (gdb) disas main
-  ...
-  0x08048480 <+0>:	push   %ebp # ebp push sur la stack
-  0x08048481 <+1>:	mov    %esp,%ebp # ebp remplace par esp
-  ...
-  0x08048495 <+21>:	leave  # esp remplace par ebp + pop ebp hors de la stack
-  0x08048496 <+22>:	ret # renvoi vers ebp
-  ...
-  ```
 
 ## Résolution
-- Il faut donc overflow la valeur de l'`ebp` avec l'adresse de la fonction `run()` pour que quand la 
+- On va overflow la valeur de la commande `ret` avec l'adresse de la fonction `run()` pour que quand la 
 commande `ret()` sera execute, c'est `run()` qui sera appelee et donc notre appel systeme sera execute
 ouvrant ainsi un shell interactif.
-- Il faut trouver l'offset de l'`eip` (le pointeur deu jeu d'instruction en cours) pour savoir de 
+- Il faut trouver l'offset de l'`eip` (le pointeur du jeu d'instruction en cours) pour savoir de 
 combien il faut overflow le buffer. Dans `main()` on a vu que le buffer est de 80 bytes. 
 (`0x08048486 <+6>:		sub    esp,0x50`). On obtient bien un segfault : 
 ```shell
