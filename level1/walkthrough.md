@@ -1,4 +1,6 @@
 ## Comportement
+- J'ai des droits `level1` que je peux verifier en tapant `whoami`
+- Un binaire est present avec des droits differents : `-rwsr-s---+ 1 level2 users  5138 Mar  6  2016 level1*`
 En exécutant le binaire (`./level1`), on observe:
 - qu'il attend un input de notre part.
 - qu'il exit juste apres notre input.
