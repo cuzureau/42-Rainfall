@@ -1,5 +1,5 @@
 ## Comportement
-- J'ai des droits `level3` que je peux vérifier en tapant `whoami`
+- J'ai des droits `level2` que je peux vérifier en tapant `whoami`
 - Un binaire est présent avec des droits différents : `-rwsr-s---+ 1 level3 users  5403 Mar  6  2016 level2*`
 - En exécutant le binaire (`./level2`), on observe:
   - qu'il attend un input de notre part.
