@@ -5,7 +5,7 @@
 void	o(void)
 {
 	system("/bin/sh");
-	_exit(1);
+	exit(1);
 }
 
 void	n(void)
