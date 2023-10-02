@@ -1,7 +1,7 @@
 ## Comportement
 - J'ai des droits `level8` que je peux vérifier en tapant `whoami`
-- Un binaire est présent avec des droits différents : `-rwsr-s---+ 1 level8 users  5648 Mar  9  2016 level7*`
-- En exécutant le binaire (`./level7`), on observe:
+- Un binaire est présent avec des droits différents : `-rwsr-s---+ 1 level9 users  6057 Mar  6  2016 level8*`
+- En exécutant le binaire (`./level8`), on observe:
   ```shell
     ./level7 
     Segmentation fault (core dumped)
