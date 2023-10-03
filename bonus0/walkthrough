@@ -1,14 +1,3 @@
-L'exécutable lit 4096 caractères deux fois depuis l'entrée standard (stdin),
-puis il tronque les deux résultats à 20 caractères ou jusqu'à un retour à la ligne (\n),
-ensuite il les concatène, avec un espace ' ' entre eux.
-La chaîne résultante de cette concaténation peut dépasser le tampon de taille 22 dans la fonction principale (main).
-
-Nous écrivons une très grande séquence d'instructions NOP (no operation) lors de la première lecture, suivie de notre code malveillant (shellcode).
-Lors de la deuxième lecture, nous débordons sur le pointeur de retour de la fonction principale (main).
-
-Notre payload: 
-
-
 ## Comportement
 - J'ai des droits `bonus0` que je peux vérifier en tapant `whoami`
 - Un binaire est présent avec des droits différents : `-rwsr-s---+ 1 bonus1 users  5566 Mar  6  2016 bonus0*`
