@@ -28,7 +28,7 @@ En analysant le binaire (`gdb ./level1`) on observe:
   ```
 - Dans la fonction `run()` il y a un appel système : 
   ```shell
-  (gdb) disas main
+  (gdb) disas run
   ...
   0x08048472 <+46>:	movl   $0x8048584,(%esp) # argument envoyé a la fonction system() en dessous
   0x08048479 <+53>:	call   0x8048360 <system@plt>
@@ -44,9 +44,6 @@ Ce qui est une technique courante pour lancer un shell interactif.
 
 
 ## Résolution
-- On va overflow la valeur de la commande `ret` avec l'adresse de la fonction `run()` pour que quand la 
-commande `ret()` sera execute, c'est `run()` qui sera appelée et donc notre appel système sera execute
-ouvrant ainsi un shell interactif.
 - Il faut trouver l'offset de l'`eip` (le pointeur du jeu d'instruction en cours) pour savoir de 
 combien il faut overflow le buffer. Dans `main()` on a vu que le buffer est de 80 bytes. 
 (`0x08048486 <+6>:		sub    esp,0x50`). On obtient bien un segfault : 
